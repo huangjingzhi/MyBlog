@@ -1,0 +1,44 @@
+﻿{% extends "site/base_head _test.html" %}
+{% load static %}
+
+{% block content %}
+<div class="text-center">
+    <h2><stong>404错误！很抱歉，您要找的页面不存在</stong></h2>
+    <div class="padding-big">
+        <a href="#" class="btn btn-primary">返回首页</a>
+    </div>
+    <div class="padding-big">
+        <a href="#" title="用DTcms做一个独立博客网站（响应式模板）">用DTcms做一个独立博客网站（响应式模板）</a>
+    </div>
+    <div class="padding-big">
+        <a href="#" title="MZ-NetBolg主题">MZ-NetBolg主题栏目</a>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+
+{% block latestcomments_article %}
+<div class="widget widget_hot">
+    <h3>最新评论文章</h3>
+    <ul>
+        {% for article in articles_list2 %}
+        <li>
+            <a title={{ article.title }} href="#">
+                <span class="thumbnail">
+                    <img class="thumb" data-original={{ article.img }} src="{% static article.img %}" alt={{ article.title }} style="display: block;">
+                </span><span class="text">{{ article.title }}</span>
+                <span class="muted">
+                    <i class="glyphicon glyphicon-time"></i>
+                    {{ article.release_day }}
+                </span>
+                <span class="muted"><i class="glyphicon glyphicon-eye-open"></i>{{ article.views_number }}</span>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}
+
+
+

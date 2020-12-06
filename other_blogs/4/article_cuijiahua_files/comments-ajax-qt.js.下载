@@ -1,0 +1,202 @@
+/**
+ * WordPress jQuery-Ajax-Comments v1.3 by Willin Kan.
+ */
+var i = 0, got = -1, len = document.getElementsByTagName('script').length;
+while ( i <= len && got == -1){
+	var js_url = document.getElementsByTagName('script')[i].src,
+			got = js_url.indexOf('comments-ajax-qt.js'); i++ ;
+}
+var edit_mode = '1', // 再编辑模式( '1'=打开; '0'=关闭 )
+		ajax_php_url = js_url.replace('comments-ajax-qt.js','../inc/comment-ajax.php'),
+		wp_url = js_url.substr(0, js_url.indexOf('wp-content')),
+		pic_sb = wp_url + 'wp-admin/images/wpspin_dark.gif', // 提交 icon
+		pic_no = wp_url + 'wp-admin/images/no.png',      // 错误 icon
+		pic_ys = wp_url + 'wp-admin/images/yes.png',     // 成功 icon
+		txt1 = '<div id="loading"><i class="be be-loader"></i>正在提交, 请稍候...</div>',
+		txt2 = '<div id="error">#</div>',
+		txt3 = '"> <div id="edita"><i class="be be-thumbs-up"></i>提交成功！<br />',
+		edt1 = '<a rel="nofollow" class="comment-reply-link_a" href="#edit" onclick=\'return addComment.moveForm("',
+		edt2 = ')\'><i class="be be-editor"></i>重新编辑</a></div> ',
+		cancel_edit = '取消编辑',
+		edit, num = 1, comm_array=[]; comm_array.push('');
+
+jQuery(document).ready(function($) {
+		$comments = $('#comments-title'); // 评论数据的 ID
+		$cancel = $('#cancel-comment-reply-link'); cancel_text = $cancel.text();
+		$submit = $('#commentform #submit'); $submit.attr('disabled', false);
+		$('#comment').after( txt1 + txt2 ); $('#loading').hide(); $('#error').hide();
+		$body = (window.opera) ? (document.compatMode == "CSS1Compat" ? $('html') : $('body')) : $('html,body');
+
+/** submit */
+$('#commentform').submit(function() {
+		$('#loading').slideDown();
+		$submit.attr('disabled', true).fadeTo('slow', 0.5);
+		if ( edit ) $('#comment').after('<input type="text" name="edit_id" id="edit_id" value="' + edit + '" style="display:none;" />');
+
+/** Ajax */
+	$.ajax( {
+		url: ajax_php_url,
+		data: $(this).serialize(),
+		type: $(this).attr('method'),
+
+		error: function(request) {
+			$('#loading').slideUp();
+			$('#error').slideDown().html('' + request.responseText);
+			setTimeout(function() {$submit.attr('disabled', false).fadeTo('slow', 1); $('#error').slideUp();}, 3000);
+			$(".qaptcha").html('');$(".qaptcha").QapTcha();
+			},
+
+		success: function(data) {
+			$('#loading').hide();
+			comm_array.push($('#comment').val());
+			$('textarea').each(function() {this.value = ''});
+			var t = addComment, cancel = t.I('cancel-comment-reply-link'), temp = t.I('wp-temp-form-div'), respond = t.I(t.respondId), post = t.I('comment_post_ID').value, parent = t.I('comment_parent').value;
+			$(".qaptcha").html('');$(".qaptcha").QapTcha();
+// comments
+		if ( ! edit && $comments.length ) {
+			n = parseInt($comments.text().match(/\d+/));
+			$comments.text($comments.text().replace( n, n + 1 ));
+		}
+
+// show comment
+		new_htm = '" id="new_comm_' + num + '"></';
+		new_htm = ( parent == '0' ) ? ('\n<ol style="clear:both;" class="comment-list' + new_htm + 'ol>') : ('\n<ul class="children' + new_htm + 'ul>');
+
+		ok_htm = '\n<span id="success_' + num + txt3;
+		if ( edit_mode == '1' ) {
+			div_ = (document.body.innerHTML.indexOf('div-comment-') == -1) ? '' : ((document.body.innerHTML.indexOf('li-comment-') == -1) ? 'div-' : '');
+			ok_htm = ok_htm.concat(edt1, div_, 'comment-', parent, '", "', parent, '", "respond", "', post, '", ', num, edt2);
+		}
+		ok_htm += '</span><span></span>\n';
+
+		$('#respond').before(new_htm);
+		$('#new_comm_' + num).hide().append(data);
+		$('#new_comm_' + num + ' li').append(ok_htm);
+		$('#new_comm_' + num).fadeIn(4000);
+
+		$body.animate( { scrollTop: $('#new_comm_' + num).offset().top - 200}, 900);
+		countdown(); num++ ; edit = ''; $('*').remove('#edit_id');
+		cancel.style.display = 'none';
+		cancel.onclick = null;
+		t.I('comment_parent').value = '0';
+		if ( temp && respond ) {
+			temp.parentNode.insertBefore(respond, temp);
+			temp.parentNode.removeChild(temp)
+		}
+		}
+	}); // end Ajax
+  return false;
+}); // end submit
+
+/** comment-reply.dev.js */
+addComment = {
+	moveForm : function(commId, parentId, respondId, postId, num) {
+		var t = this, div, comm = t.I(commId), respond = t.I(respondId), cancel = t.I('cancel-comment-reply-link'), parent = t.I('comment_parent'), post = t.I('comment_post_ID');
+		if ( edit ) exit_prev_edit();
+		num ? (
+			t.I('comment').value = comm_array[num],
+			edit = t.I('new_comm_' + num).innerHTML.match(/(comment-)(\d+)/)[2],
+			$new_sucs = $('#success_' + num ), $new_sucs.hide(),
+			$new_comm = $('#new_comm_' + num ), $new_comm.hide(),
+			$cancel.text(cancel_edit)
+		) : $cancel.text(cancel_text);
+
+		t.respondId = respondId;
+		postId = postId || false;
+
+		if ( !t.I('wp-temp-form-div') ) {
+			div = document.createElement('div');
+			div.id = 'wp-temp-form-div';
+			div.style.display = 'none';
+			respond.parentNode.insertBefore(div, respond)
+		}
+
+		!comm ? ( 
+			temp = t.I('wp-temp-form-div'),
+			t.I('comment_parent').value = '0',
+			temp.parentNode.insertBefore(respond, temp),
+			temp.parentNode.removeChild(temp)
+		) : comm.parentNode.insertBefore(respond, comm.nextSibling);
+
+		$body.animate( { scrollTop: $('#respond').offset().top - 180 }, 400);
+
+		if ( post && postId ) post.value = postId;
+		parent.value = parentId;
+		cancel.style.display = '';
+
+		cancel.onclick = function() {
+			if ( edit ) exit_prev_edit();
+			var t = addComment, temp = t.I('wp-temp-form-div'), respond = t.I(t.respondId);
+
+			t.I('comment_parent').value = '0';
+			if ( temp && respond ) {
+				temp.parentNode.insertBefore(respond, temp);
+				temp.parentNode.removeChild(temp);
+			}
+			this.style.display = 'none';
+			this.onclick = null;
+			return false;
+		};
+
+		try { t.I('comment').focus(); }
+		catch(e) {}
+
+		return false;
+	},
+
+	I : function(e) {
+		return document.getElementById(e);
+	}
+}; // end addComment
+
+function exit_prev_edit() {
+		$new_comm.show(); $new_sucs.show();
+		$('textarea').each(function() {this.value = ''});
+		edit = '';
+}
+
+var wait = 8, submit_val = $submit.val();
+function countdown() {
+	if ( wait > 0 ) {
+		$submit.val(wait); wait--; setTimeout(countdown, 1000);
+	} else {
+		$submit.val(submit_val).attr('disabled', false).fadeTo('slow', 1);
+		wait = 8;
+  }
+}
+
+});
+function commentUploadPic(a){
+if(a.files&&a.files[0]){
+	if(0!=a.files[0].type.indexOf("image"))
+		return jQuery(".comment-pic-upload-btn").html('<span style="color: #c50808">请选择图像文件上传</span>');
+	a = new FormData(jQuery("#comment-pic-upload-form")[0]);
+	jQuery.ajax({url:"https://sm.ms/api/upload",type:"POST",
+		xhr:function(){
+			myXhr = jQuery.ajaxSettings.xhr();
+			myXhr.upload&&myXhr.upload.addEventListener("progress",function(a){
+				a.lengthComputable&&(a=a.loaded/a.total,1==a?jQuery(".comment-pic-upload-btn").html('<span style="color: #c50808">处理中</span>'):jQuery(".comment-pic-upload-btn").html(parseInt(100*a)+"%"))
+			},!1);return myXhr},
+		beforeSend:function(){jQuery(".comment-pic-upload-btn").html("准备上传")},
+		success:function(a){"success"!=a.code?jQuery(".comment-pic-upload-btn").html('<span style="color: #c50808">'+a.msg+"</span>"):(jQuery(".comment-pic-input form")[0].url.value=a.data.url.replace(/http:/g,"https:"),commentExtraPicSubmit(jQuery(".comment-pic-input form")[0]))},
+		error:function(a){
+			console.log(a);
+			jQuery(".comment-pic-upload-btn").html('<span style="color: #c50808">上传出错</span>')},data:a,dataType:"json",cache:!1,contentType:!1,processData:!1});
+	return!1}}
+function addEditor(a,b,c){
+if(document.selection)a.focus(),sel=document.selection.createRange(),c?sel.text=b+sel.text+c:sel.text=b,a.focus();
+else if(a.selectionStart||"0"==a.selectionStart){
+	var d=a.selectionStart,e=a.selectionEnd,f=e;
+	c?a.value=a.value.substring(0,d)+b+a.value.substring(d,e)+c+a.value.substring(e,a.value.length):a.value=a.value.substring(0,d)+b+a.value.substring(e,a.value.length);
+	c?f+=b.length+c.length:f+=b.length-e+d;d==e&&c&&(f-=c.length);a.focus();
+	a.selectionStart=f;a.selectionEnd=f}
+else a.value+=b+c,a.focus()}
+function commentExtraPicSubmit(a){addEditor(jQuery("#comment")[0], a.url.value,"");jQuery.fancybox.close(!0);return!1}
+jQuery(document).ready(function (a){
+	a(document).on("click",".comment-tool span",
+	function(b){
+		switch(a(this).data("action")){
+			case "pic":a.fancybox.open('<div class="comment-extra-input comment-pic-input"><h5>\u63d2\u5165\u56fe\u7247</h5><form onsubmit="return commentExtraPicSubmit(this);" id="comment-pic-upload-form"><input style="display:none;" type="url" name="url" required><div class="comment-pic-upload"><input type="file" name="iufile" id="comment-pic-upload" multiple="true" onchange="commentUploadPic(this)" title="\u70b9\u51fb\u9009\u62e9\u6216\u62d6\u62fd\u56fe\u7247\u5230\u8fd9\u91cc\u4e0a\u4f20"><button class="comment-pic-upload-btn" onclick="return false;"><i class="fa fa-cloud-upload" aria-hidden="true"></i> \u672c\u5730\u4e0a\u4f20</button></div></form></div>');
+		};
+	});
+});
